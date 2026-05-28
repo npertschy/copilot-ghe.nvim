@@ -82,7 +82,7 @@ local function handlers(adapter)
 end
 
 ---@class CodeCompanion.HTTPAdapter.CopilotGHE: CodeCompanion.HTTPAdapter
-return {
+local M = {
   name = "copilot_ghe",
   formatted_name = "Copilot (GHE)",
   roles = {
@@ -116,9 +116,7 @@ return {
     ["Copilot-Integration-Id"] = "vscode-chat",
     ["Editor-Version"] = "Neovim/" .. version.major .. "." .. version.minor .. "." .. version.patch,
   },
-  show_copilot_stats = function(self)
-    return stats.show(self)
-  end,
+  show_copilot_stats = nil, -- set by copilot-ghe.adapter() with correct env closure
   handlers = {
     ---Initiate fetching the models in the background as soon as the adapter is resolved
     ---@param self CodeCompanion.HTTPAdapter
@@ -445,3 +443,5 @@ return {
     },
   },
 }
+
+return M

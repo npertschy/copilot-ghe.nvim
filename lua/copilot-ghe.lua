@@ -6,17 +6,21 @@ local M = {}
 
 ---@type CopilotGHE.Config
 local _config = {
-  github_enterprise_url = nil,
-  adapter_name = "copilot_ghe",
+	github_enterprise_url = nil,
+	adapter_name = "copilot_ghe",
 }
 
 ---Return the adapter table with the configured github_enterprise_url baked in.
 ---Intended for use as a value in codecompanion's adapters.http config.
 ---@return CodeCompanion.HTTPAdapter
 function M.adapter()
-  local adapter_def = vim.deepcopy(require("copilot-ghe.adapter"))
-  adapter_def.env.github_enterprise_url = _config.github_enterprise_url
-  return adapter_def
+	local adapter_def = vim.deepcopy(require("copilot-ghe.adapter"))
+	adapter_def.env.github_enterprise_url = _config.github_enterprise_url
+	local stats = require("copilot-ghe.adapter.stats")
+	adapter_def.show_copilot_stats = function()
+		return stats.show(adapter_def)
+	end
+	return adapter_def
 end
 
 ---Configure the plugin.
@@ -25,7 +29,7 @@ end
 ---Example (lazy.nvim):
 ---
 ---    {
----      "your-username/copilot-ghe.nvim",
+---      "npertschy/copilot-ghe.nvim",
 ---      dependencies = { "olimorris/codecompanion.nvim" },
 ---      opts = { github_enterprise_url = "ghe.mycompany.com" },
 ---    }
@@ -35,7 +39,9 @@ end
 ---    require("codecompanion").setup({
 ---      adapters = {
 ---        http = {
----          copilot_ghe = require("copilot-ghe").adapter,
+---          copilot_ghe = function()
+---            return require("copilot-ghe").adapter()
+---          end,
 ---        },
 ---      },
 ---      interactions = {
@@ -47,8 +53,8 @@ end
 ---
 ---@param opts CopilotGHE.Config
 function M.setup(opts)
-  opts = opts or {}
-  _config = vim.tbl_deep_extend("force", _config, opts)
+	opts = opts or {}
+	_config = vim.tbl_deep_extend("force", _config, opts)
 end
 
 return M

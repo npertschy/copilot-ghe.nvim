@@ -20,7 +20,7 @@ codecompanion's built-in `copilot` adapter is hardcoded to `github.com`. This pl
 
 ```lua
 {
-  "your-username/copilot-ghe.nvim",
+  "npertschy/copilot-ghe.nvim",
   dependencies = {
     "olimorris/codecompanion.nvim",
     "nvim-lua/plenary.nvim",
@@ -29,17 +29,14 @@ codecompanion's built-in `copilot` adapter is hardcoded to `github.com`. This pl
     github_enterprise_url = "ghe.mycompany.com",
   },
 },
-```
-
-Then configure codecompanion to use the adapter:
-
-```lua
 {
   "olimorris/codecompanion.nvim",
   opts = {
     adapters = {
       http = {
-        copilot_ghe = require("copilot-ghe").adapter,
+        copilot_ghe = function()
+          return require("copilot-ghe").adapter()
+        end,
       },
     },
     interactions = {
@@ -51,29 +48,22 @@ Then configure codecompanion to use the adapter:
 },
 ```
 
-> **Note:** `require("copilot-ghe").setup()` must run before `require("codecompanion").setup()`.
-> With lazy.nvim, declare `copilot-ghe.nvim` before `codecompanion.nvim` in your plugin list,
-> or use `priority` to ensure ordering.
+`copilot-ghe.nvim` must be listed before `codecompanion.nvim` so that lazy initialises it first.
 
 ## Configuration
 
-```lua
-require("copilot-ghe").setup({
-  -- Required: your GHE hostname or URL.
-  -- Both "ghe.mycompany.com" and "https://ghe.mycompany.com" are accepted.
-  -- Falls back to the GH_HOST environment variable, then public github.com.
-  github_enterprise_url = "ghe.mycompany.com",
-})
-```
+| Option                  | Type          | Default | Description                                                                                                                                         |
+| ----------------------- | ------------- | ------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `github_enterprise_url` | `string\|nil` | `nil`   | GHE hostname or URL. Both `"ghe.mycompany.com"` and `"https://ghe.mycompany.com"` are accepted. Falls back to `$GH_HOST`, then public `github.com`. |
 
 ## How it works
 
 This plugin ships three self-contained files adapted from codecompanion's built-in `copilot` adapter:
 
-| File | Purpose |
-|---|---|
-| `lua/copilot-ghe/adapter/token.lua` | OAuth + Copilot token management with GHE endpoint resolution |
-| `lua/copilot-ghe/adapter/init.lua` | Adapter definition; requires `token.lua` from this plugin |
+| File                                | Purpose                                                                                   |
+| ----------------------------------- | ----------------------------------------------------------------------------------------- |
+| `lua/copilot-ghe/adapter/token.lua` | OAuth + Copilot token management with GHE endpoint resolution                             |
+| `lua/copilot-ghe/adapter/init.lua`  | Adapter definition; requires `token.lua` from this plugin                                 |
 | `lua/copilot-ghe/adapter/stats.lua` | Copilot usage stats; `adapter` is passed as a parameter instead of read from module state |
 
 The upstream `get_models.lua` is re-used directly without modification.
@@ -86,29 +76,17 @@ The upstream `get_models.lua` is re-used directly without modification.
 
 ## Copilot Stats
 
-The stats window is accessible via:
-
-```lua
-require("codecompanion.adapters").resolve("copilot_ghe").show_copilot_stats()
-```
-
-Or map it in your config:
-
-```lua
-vim.keymap.set("n", "<leader>cs", function()
-  require("codecompanion.adapters").resolve("copilot_ghe").show_copilot_stats()
-end, { desc = "Copilot GHE stats" })
-```
+The stats window works via the standard codecompanion keymap (default `gs` in the chat buffer). No extra configuration is needed — `show_copilot_stats` is defined on the adapter table, so codecompanion detects it automatically.
 
 ## Upstream sync
 
 This plugin contains copies of three upstream files. When codecompanion releases updates to its Copilot adapter, review and merge any changes manually.
 
-| Plugin file | Upstream source | Synced at commit |
-|---|---|---|
-| `lua/copilot-ghe/adapter/token.lua` | `lua/codecompanion/adapters/http/copilot/token.lua` | `405bc724` |
-| `lua/copilot-ghe/adapter/init.lua` | `lua/codecompanion/adapters/http/copilot/init.lua` | `405bc724` |
-| `lua/copilot-ghe/adapter/stats.lua` | `lua/codecompanion/adapters/http/copilot/stats.lua` | `405bc724` |
+| Plugin file                         | Upstream source                                     | Synced at commit |
+| ----------------------------------- | --------------------------------------------------- | ---------------- |
+| `lua/copilot-ghe/adapter/token.lua` | `lua/codecompanion/adapters/http/copilot/token.lua` | `405bc724`       |
+| `lua/copilot-ghe/adapter/init.lua`  | `lua/codecompanion/adapters/http/copilot/init.lua`  | `405bc724`       |
+| `lua/copilot-ghe/adapter/stats.lua` | `lua/codecompanion/adapters/http/copilot/stats.lua` | `405bc724`       |
 
 `lua/codecompanion/adapters/http/copilot/get_models.lua` is **not** copied — it is required directly from codecompanion.
 
