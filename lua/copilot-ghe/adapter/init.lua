@@ -71,6 +71,9 @@ local function handlers(adapter)
 		responses.handlers.tools.output_response = function(self, tool_call, output)
 			return responses.handlers.tools.format_response(self, tool_call, output)
 		end
+		responses.handlers.form_structured_output = function(self, schema)
+			return responses.handlers.request.build_structured_output(self, schema)
+		end
 
 		return responses.handlers
 	end
@@ -169,6 +172,11 @@ local M = {
 			then
 				self.opts.vision = false
 			end
+			self.opts.can_form_structured_output = (
+				model_opts
+				and model_opts.opts
+				and model_opts.opts.can_form_structured_output
+			) or false
 
 			return token.init(self)
 		end,
@@ -268,6 +276,21 @@ local M = {
 		form_tools = function(self, tools)
 			return handlers(self).form_tools(self, tools)
 		end,
+
+		---Form the structured output schema for the request body
+		---@param self CodeCompanion.HTTPAdapter
+		---@param schema CodeCompanion.StructuredOutput.Schema
+		---@return table|nil
+		form_structured_output = function(self, schema)
+			if not schema then
+				return
+			end
+			if not self.opts.can_form_structured_outputs then
+				return log:warn("Model `%s` does not support structured outputs", self.model and self.model.name)
+			end
+			return handlers(self).form_structured_output(self, schema)
+		end,
+
 		form_reasoning = function(self, data)
 			local content = vim.iter(data)
 				:map(function(item)
