@@ -93,6 +93,7 @@ local M = {
 		user = "user",
 	},
 	opts = {
+		documents = true,
 		stream = true,
 		tools = true,
 		vision = true,
@@ -172,6 +173,17 @@ local M = {
 			then
 				self.opts.vision = false
 			end
+
+			-- NOTE: Does NOT seem possible to be able to send documents through the
+			-- /chat/completions endpoint. Copilot has a translation layer that
+			-- returns a 400 error asking for `image_url` or `text` block
+			if self.opts and self.opts.documents then
+				local vendor = model_opts and model_opts.vendor
+				if not (vendor and vendor:find("OpenAI", 1, true)) then
+					self.opts.documents = false
+				end
+			end
+
 			self.opts.can_form_structured_output = (
 				model_opts
 				and model_opts.opts
@@ -183,7 +195,14 @@ local M = {
 
 		--- Use the OpenAI adapter for the bulk of the work
 		form_parameters = function(self, params, messages)
-			return handlers(self).form_parameters(self, params, messages)
+			local result = handlers(self).form_parameters(self, params, messages)
+
+			-- GitHub picks the model on our behalf, so it must be omitted from the request
+			if result and self.model and self.model.name == "auto" then
+				result.model = nil
+			end
+
+			return result
 		end,
 		form_messages = function(self, messages)
 			for _, m in ipairs(messages) do
@@ -390,7 +409,6 @@ local M = {
 			return handlers(self).inline_output(self, data, context)
 		end,
 		on_exit = function(self, data)
-			get_models.reset_cache()
 			return handlers(self).on_exit(self, data)
 		end,
 	},
@@ -402,7 +420,7 @@ local M = {
 			type = "enum",
 			desc = "ID of the model to use. See the model endpoint compatibility table for details on which models work with the Chat API.",
 			---@type string|fun(): string
-			default = "gpt-4.1",
+			default = "auto",
 			---@type fun(self: CodeCompanion.HTTPAdapter, opts?: table): table
 			choices = function(self, opts)
 				opts = opts or {}
@@ -411,74 +429,10 @@ local M = {
 				local force = opts.async == false
 				local fetched = token.fetch({ force = force, adapter = self })
 				if not fetched or not fetched.copilot_token then
-					return { ["gpt-4.1"] = { opts = {} } }
+					return { ["gpt-5.4-mini"] = { opts = {} } }
 				end
 				return get_models.choices(self, { token = fetched, async = opts.async })
 			end,
-		},
-		---@type CodeCompanion.Schema
-		temperature = {
-			order = 3,
-			mapping = "parameters",
-			type = "number",
-			default = 0.1,
-			---@type fun(self: CodeCompanion.HTTPAdapter): boolean
-			enabled = function(self)
-				local model = self.schema.model.default
-				if type(model) == "function" then
-					model = model()
-				end
-				return not vim.startswith(model, "o1")
-					and not model:find("codex")
-					and not vim.startswith(model, "gpt-5")
-			end,
-			desc = "What sampling temperature to use, between 0 and 2. Higher values like 0.8 will make the output more random, while lower values like 0.2 will make it more focused and deterministic. We generally recommend altering this or top_p but not both.",
-		},
-		max_tokens = {
-			order = 4,
-			mapping = "parameters",
-			type = "integer",
-			default = function(self)
-				local model_opts = resolve_model_opts(self)
-				if model_opts.limits and model_opts.limits.max_output_tokens then
-					return tonumber(model_opts.limits.max_output_tokens)
-				end
-				return 16384
-			end,
-			desc = "The maximum number of tokens to generate in the chat completion. The total length of input tokens and generated tokens is limited by the model's context length.",
-		},
-		---@type CodeCompanion.Schema
-		top_p = {
-			order = 5,
-			mapping = "parameters",
-			type = "number",
-			default = 1,
-			---@type fun(self: CodeCompanion.HTTPAdapter): boolean
-			enabled = function(self)
-				local model = self.schema.model.default
-				if type(model) == "function" then
-					model = model()
-				end
-				local disabled_for = { "gpt-5.4", "gpt-5.4-mini" }
-				return not vim.tbl_contains(disabled_for, model)
-			end,
-			desc = "An alternative to sampling with temperature, called nucleus sampling, where the model considers the results of the tokens with top_p probability mass. So 0.1 means only the tokens comprising the top 10% probability mass are considered. We generally recommend altering this or temperature but not both.",
-		},
-		---@type CodeCompanion.Schema
-		n = {
-			order = 6,
-			mapping = "parameters",
-			type = "number",
-			default = 1,
-			---@type fun(self: CodeCompanion.HTTPAdapter): boolean
-			enabled = function(self)
-				local model = self.schema.model.default
-				if type(model) == "function" then
-					model = model()
-				end
-				return not vim.startswith(model, "o1")
-			end,
-			desc = "How many chat completions to generate for each prompt.",
 		},
 	},
 }
