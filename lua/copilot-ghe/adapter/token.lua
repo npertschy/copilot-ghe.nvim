@@ -174,17 +174,16 @@ local function get_copilot_token(adapter)
 	log:trace("Authorizing GitHub Copilot GHE token")
 
 	local token_endpoint, _ = M.resolve_endpoints(adapter)
-	local request, err = pcall(function()
-		return Curl.get_sync(token_endpoint, {
-			headers = {
-				Authorization = "Bearer " .. (M._oauth_token or ""),
-				Accept = "application/json",
-				["User-Agent"] = "CodeCompanion.nvim",
-			},
-			insecure = config.adapters.http.opts.allow_insecure,
-			proxy = config.adapters.http.opts.proxy,
-		})
-	end)
+	local request, err = Curl.get_sync({
+		url = token_endpoint,
+		headers = {
+			Authorization = "Bearer " .. (M._oauth_token or ""),
+			Accept = "application/json",
+			["User-Agent"] = "CodeCompanion.nvim",
+		},
+		insecure = config.adapters.http.opts.allow_insecure,
+		proxy = config.adapters.http.opts.proxy,
+	})
 
 	_token_fetch_in_progress = false
 
