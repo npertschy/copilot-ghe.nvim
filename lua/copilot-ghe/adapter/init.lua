@@ -38,7 +38,7 @@ local function handlers(adapter)
 		local base_url = adapter.url:gsub("/chat/completions$", ""):gsub("/responses$", "")
 		adapter.url = base_url .. "/responses"
 
-		local responses = require("codecompanion.adapters.http.openai_responses")
+		local responses = require("codecompanion.adapters.http.openai")
 
 		-- Copilot calls its backend with flat handler names and positional arguments
 		responses.handlers.setup = function(self)
@@ -77,7 +77,7 @@ local function handlers(adapter)
 
 	local base_url = adapter.url:gsub("/chat/completions$", ""):gsub("/responses$", "")
 	adapter.url = base_url .. "/chat/completions"
-	return require("codecompanion.adapters.http.openai").handlers
+	return require("codecompanion.adapters.http.openai_legacy").handlers
 end
 
 ---@class CodeCompanion.HTTPAdapter.CopilotGHE: CodeCompanion.HTTPAdapter
