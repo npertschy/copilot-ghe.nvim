@@ -1,4 +1,4 @@
-local Curl = require("plenary.curl")
+local Curl = require("codecompanion.utils.curl")
 
 local config = require("codecompanion.config")
 local log = require("codecompanion.utils.log")
@@ -29,9 +29,8 @@ local function get_statistics(adapter)
   local oauth_token = token.fetch({ force = true, adapter = adapter }).oauth_token
 
   local _, _, stats_endpoint = token.resolve_endpoints(adapter)
-  local ok, response = pcall(function()
-    return Curl.get(stats_endpoint, {
-      sync = true,
+  local response, err = pcall(function()
+    return Curl.get_sync(stats_endpoint, {
       headers = {
         Authorization = "Bearer " .. oauth_token,
         Accept = "*/*",
@@ -42,8 +41,8 @@ local function get_statistics(adapter)
     })
   end)
 
-  if not ok then
-    log:error("Copilot GHE Adapter: Could not get stats: %s", response)
+  if not response then
+    log:error("Copilot GHE Adapter: Could not get stats: %s", err.message)
     return nil
   end
 
